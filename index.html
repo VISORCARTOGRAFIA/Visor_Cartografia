@@ -2,7 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Visor de Cartografía</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visor de Muestras</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-search@3.0.9/dist/leaflet-search.min.css" />
     <style>
@@ -18,7 +19,7 @@
 <script src="https://unpkg.com/leaflet-search@3.0.9/dist/leaflet-search.min.js"></script>
 
 <script>
-    // 1. Inicializar mapa centrado en Perú
+    // 1. Mapa centrado en Perú
     var map = L.map('map').setView([-9.0, -75.0], 6);
 
     // 2. Fondo Satelital
@@ -26,12 +27,12 @@
         attribution: 'Esri'
     }).addTo(map);
 
-    // 3. Grupos de capas independientes
+    // 3. Grupos para cada muestra
     var g2023 = L.layerGroup().addTo(map);
     var g2024 = L.layerGroup().addTo(map);
     var g2025 = L.layerGroup().addTo(map);
 
-    // 4. Función de carga
+    // 4. Función de carga optimizada
     function cargarCapa(url, grupo) {
         fetch(url)
             .then(res => res.json())
@@ -43,32 +44,38 @@
                         l.bindTooltip("Segmento: " + id);
                     }
                 }).addTo(grupo);
-            })
-            .catch(err => console.log("Error cargando " + url));
+            });
     }
 
     cargarCapa('MUESTRA_2023.geojson', g2023);
     cargarCapa('MUESTRA_2024.geojson', g2024);
     cargarCapa('MUESTRA_2025.geojson', g2025);
 
-    // 5. Leyenda (Control de capas abierto)
-    var baseLayers = { "Imagen Satelital": satelital };
-    var overlays = { 
-        "Muestra 2023": g2023,
-        "Muestra 2024": g2024,
+    // 5. Control de capas (Leyenda)
+    L.control.layers({ "Imagen Satelital": satelital }, { 
+        "Muestra 2023": g2023, 
+        "Muestra 2024": g2024, 
         "Muestra 2025": g2025 
-    };
-    L.control.layers(baseLayers, overlays, {collapsed: false}).addTo(map);
+    }, {collapsed: false}).addTo(map);
 
-    // 6. Buscador Global
+    // 6. Buscador con zoom preciso a polígonos
     var todas = L.featureGroup([g2023, g2024, g2025]).addTo(map);
+    
     var searchControl = new L.Control.Search({
         layer: todas,
-        propertyName: 'nsegm',
+        propertyName: 'nsegm', 
         initial: false,
         zoom: 17,
         textPlaceholder: 'Buscar segmento...'
     });
+
+    // Acción al encontrar el segmento: Ajusta el zoom al polígono encontrado
+    searchControl.on('search:locationfound', function(e) {
+        if (e.layer.getBounds) {
+            map.fitBounds(e.layer.getBounds(), { padding: [20, 20] });
+        }
+    });
+
     map.addControl(searchControl);
 </script>
 </body>
