@@ -19,20 +19,16 @@
 <script src="https://unpkg.com/leaflet-search@3.0.9/dist/leaflet-search.min.js"></script>
 
 <script>
-    // 1. Mapa centrado en Perú
     var map = L.map('map').setView([-9.0, -75.0], 6);
 
-    // 2. Fondo Satelital
     var satelital = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Esri'
     }).addTo(map);
 
-    // 3. Grupos para cada muestra
     var g2023 = L.layerGroup().addTo(map);
     var g2024 = L.layerGroup().addTo(map);
     var g2025 = L.layerGroup().addTo(map);
 
-    // 4. Función de carga optimizada
     function cargarCapa(url, grupo) {
         fetch(url)
             .then(res => res.json())
@@ -51,28 +47,32 @@
     cargarCapa('MUESTRA_2024.geojson', g2024);
     cargarCapa('MUESTRA_2025.geojson', g2025);
 
-    // 5. Control de capas (Leyenda)
     L.control.layers({ "Imagen Satelital": satelital }, { 
         "Muestra 2023": g2023, 
         "Muestra 2024": g2024, 
         "Muestra 2025": g2025 
     }, {collapsed: false}).addTo(map);
 
-    // 6. Buscador con zoom preciso a polígonos
+    // Buscador con lógica de zoom forzado al polígono
     var todas = L.featureGroup([g2023, g2024, g2025]).addTo(map);
     
     var searchControl = new L.Control.Search({
         layer: todas,
         propertyName: 'nsegm', 
         initial: false,
-        zoom: 17,
-        textPlaceholder: 'Buscar segmento...'
+        zoom: 18, // Nivel de zoom específico al encontrarlo
+        textPlaceholder: 'Buscar segmento...',
+        hideMarkerOnCollapse: true
     });
 
-    // Acción al encontrar el segmento: Ajusta el zoom al polígono encontrado
     searchControl.on('search:locationfound', function(e) {
+        // e.layer contiene el polígono encontrado
         if (e.layer.getBounds) {
-            map.fitBounds(e.layer.getBounds(), { padding: [20, 20] });
+            // Ajusta el mapa para que encuadre perfectamente el polígono seleccionado
+            map.fitBounds(e.layer.getBounds(), {
+                padding: [50, 50], // Espacio entre el borde del polígono y la pantalla
+                maxZoom: 18        // Evita un zoom demasiado profundo
+            });
         }
     });
 
