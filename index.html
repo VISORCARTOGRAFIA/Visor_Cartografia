@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Visor de Cartografía</title>
+    <title>Visor de Muestras</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-search@3.0.9/dist/leaflet-search.min.css" />
     <style>
@@ -18,54 +18,56 @@
 <script src="https://unpkg.com/leaflet-search@3.0.9/dist/leaflet-search.min.js"></script>
 
 <script>
+    // Inicializar mapa
     var map = L.map('map').setView([-9.0, -75.0], 6);
 
+    // Fondo Satelital
     var satelital = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Esri'
     }).addTo(map);
 
-    // Definimos los grupos primero
+    // Grupos de capas
     var g2023 = L.layerGroup().addTo(map);
     var g2024 = L.layerGroup().addTo(map);
     var g2025 = L.layerGroup().addTo(map);
 
-    // Creamos el control de capas ANTES de cargar los datos
+    // Configuración del control de capas (la leyenda)
     var baseLayers = { "Satelital": satelital };
     var overlays = { 
         "Muestra 2023": g2023,
         "Muestra 2024": g2024,
         "Muestra 2025": g2025 
     };
-    var layerControl = L.control.layers(baseLayers, overlays, {collapsed: false}).addTo(map);
+    L.control.layers(baseLayers, overlays, {collapsed: false}).addTo(map);
 
+    // Función para cargar los archivos
     function cargarCapa(url, grupo) {
         fetch(url)
-            .then(res => {
-                if (!res.ok) throw new Error("Archivo no encontrado: " + url);
-                return res.json();
-            })
+            .then(res => res.json())
             .then(data => {
                 L.geoJSON(data, {
                     style: { color: "#FFFF00", weight: 2, fillOpacity: 0 },
                     onEachFeature: (f, l) => {
-                        l.bindTooltip("Segmento: " + (f.properties.nsegm || f.properties.NSEGM || "N/A"));
+                        var id = f.properties.nsegm || f.properties.NSEGM || "Sin ID";
+                        l.bindTooltip("Segmento: " + id);
                     }
                 }).addTo(grupo);
             })
-            .catch(err => console.error(err));
+            .catch(err => console.error("Error al cargar " + url, err));
     }
 
     cargarCapa('MUESTRA_2023.geojson', g2023);
     cargarCapa('MUESTRA_2024.geojson', g2024);
     cargarCapa('MUESTRA_2025.geojson', g2025);
 
-    // Buscador: Unimos los grupos
-    var featureGroup = L.featureGroup([g2023, g2024, g2025]).addTo(map);
+    // Buscador Global
+    var todas = L.featureGroup([g2023, g2024, g2025]).addTo(map);
     var searchControl = new L.Control.Search({
-        layer: featureGroup,
-        propertyName: 'nsegm',
+        layer: todas,
+        propertyName: 'nsegm', // o 'NSEGM'
         initial: false,
-        zoom: 17
+        zoom: 17,
+        textPlaceholder: 'Buscar segmento...'
     });
     map.addControl(searchControl);
 </script>
