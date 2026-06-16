@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Visor de Cartografía</title>
+    <title>Visor de Muestras</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-search@3.0.9/dist/leaflet-search.min.css" />
     <style>
@@ -18,50 +18,51 @@
 <script src="https://unpkg.com/leaflet-search@3.0.9/dist/leaflet-search.min.js"></script>
 
 <script>
-    var map = L.map('map').setView([-12.0464, -77.0428], 12);
+    // 1. Centrar el mapa en Perú (ajusta según tus datos si es necesario)
+    var map = L.map('map').setView([-9.0, -75.0], 6);
 
-    // Fondo Satelital
+    // 2. Fondo Satelital
     var satelital = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri'
     }).addTo(map);
 
-    var baseLayers = { "Imagen Satelital": satelital };
-    var overlays = {};
-    var groupLayers = L.layerGroup().addTo(map);
-
-    // Estilo: Sin relleno, línea amarilla grosor 2
+    // 3. Crear grupo de capas
+    var todasLasMuestras = L.layerGroup().addTo(map);
+    
+    // 4. Estilo de tus polígonos
     var estilo = { color: "#FFFF00", weight: 2, fillOpacity: 0 };
 
-    // Función para cargar capas
-    function cargarCapa(url, nombre) {
+    // Función para cargar archivos
+    function cargarCapa(url) {
         fetch(url)
             .then(res => res.json())
             .then(data => {
-                var capa = L.geoJSON(data, {
+                L.geoJSON(data, {
                     style: estilo,
-                    onEachFeature: function(feature, layer) {
-                        layer.bindTooltip("Segmento: " + feature.properties.NSEGM);
+                    onEachFeature: (feature, layer) => {
+                        layer.bindTooltip("Segmento: " + (feature.properties.NSEGM || "Sin ID"));
                     }
-                });
-                capa.addTo(groupLayers);
-                overlays[nombre] = capa;
-                // Actualizar control de capas
-                L.control.layers(baseLayers, overlays).addTo(map);
-            });
+                }).addTo(todasLasMuestras);
+            })
+            .catch(err => console.error("Error al cargar " + url, err));
     }
 
-    cargarCapa('MUESTRA_2023.geojson', 'Muestra 2023');
-    cargarCapa('MUESTRA_2024.geojson', 'Muestra 2024');
-    cargarCapa('MUESTRA_2025.geojson', 'Muestra 2025');
+    // Cargar los 3 archivos
+    cargarCapa('MUESTRA_2023.geojson');
+    cargarCapa('MUESTRA_2024.geojson');
+    cargarCapa('MUESTRA_2025.geojson');
 
-    // Buscador
+    // 5. Control de Capas (Satelital + Muestras)
+    var baseLayers = { "Imagen Satelital": satelital };
+    var overlays = { "Capas de Muestras": todasLasMuestras };
+    L.control.layers(baseLayers, overlays).addTo(map);
+
+    // 6. Buscador
     var searchControl = new L.Control.Search({
-        layer: groupLayers,
+        layer: todasLasMuestras,
         propertyName: 'NSEGM',
         marker: false,
-        moveToLocation: function(latlng, title, map) {
-            map.setView(latlng, 17); // Zoom al segmento encontrado
-        }
+        zoom: 16
     });
     map.addControl(searchControl);
 </script>
